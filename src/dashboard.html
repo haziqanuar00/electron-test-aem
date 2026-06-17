@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AEM Enersol — Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <header class="topbar">
+      <span class="topbar-title">Dashboard</span>
+      <button id="logout-btn" class="btn-logout">
+        <span class="logout-icon" aria-hidden="true">&#x21AA;</span>
+        Sign Out
+      </button>
+    </header>
+
+    <main class="content">
+      <div id="loading" class="loading">Loading dashboard…</div>
+      <div id="error" class="error" hidden></div>
+
+      <div id="dashboard-content" hidden>
+        <h2 class="section-title">Overview</h2>
+
+        <div class="cards-grid">
+          <section class="card">
+            <div class="card-header">Card Title</div>
+            <div class="card-body">
+              <div class="chart-wrap"><canvas id="donut-chart"></canvas></div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header">Card Title</div>
+            <div class="card-body">
+              <div class="chart-wrap"><canvas id="bar-chart"></canvas></div>
+            </div>
+          </section>
+        </div>
+
+        <h2 class="section-title">User List</h2>
+
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th class="col-index">#</th>
+              <th class="col-name">First Name</th>
+              <th class="col-name">Last Name</th>
+              <th>User Name</th>
+            </tr>
+          </thead>
+          <tbody id="user-table-body"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script src="vendor/chart.umd.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>
