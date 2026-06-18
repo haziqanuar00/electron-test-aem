@@ -14,7 +14,9 @@
     "appId": "com.aemenersol.electrontest",
     "productName": "AEM Electron Test",
     "files": [
-      "**/*",
+      "main.js",
+      "preload.js",
+      "src/**/*",
       "!**/.git/**"
     ],
     "win": {

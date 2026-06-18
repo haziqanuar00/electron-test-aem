@@ -88,9 +88,13 @@ form.addEventListener('submit', async (e) => {
       }
       await window.api.navigate('dashboard');
     } else {
-      // Mirror Angular's two-message scheme: 400/401 vs everything else.
+      // Mirror Angular's two-message scheme: only genuine credential errors
+      // (400/401) get the generic "invalid email or password" message. Any
+      // other failure — a 5xx from the API, an offline message, etc. — shows
+      // the actual message so the user isn't misled into rechecking a correct
+      // password during a server outage.
       errorEl.textContent =
-        result.status === 400 || result.status === 401 || result.source === 'api'
+        result.status === 400 || result.status === 401
           ? 'Invalid email or password. Please try again.'
           : result.message || 'Something went wrong. Please try again later.';
       errorEl.hidden = false;

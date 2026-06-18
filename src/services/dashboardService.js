@@ -7,9 +7,16 @@
 //   - Only the donut chart consumes live API data (chartDonut). The bar chart
 //     and the user table are hard-coded to match the design spec, identical to
 //     the Angular DashboardComponent defaults.
+//
+// Offline support: a successful fetch is cached in PouchDB. When the network is
+// unreachable we serve that cached snapshot instead of failing outright, so the
+// dashboard keeps working offline just like login does.
 
-const API_BASE = 'http://test-demo.aemenersol.com/api';
+const { API_BASE } = require('../config');
+const { usersDB } = require('./authService');
+
 const DASHBOARD_ENDPOINT = `${API_BASE}/dashboard`;
+const CACHE_DOC_ID = 'dashboard:cache';
 
 // Hard-coded bar data — identical to Angular's barData (names A–G).
 const STATIC_BAR = [
@@ -29,10 +36,71 @@ const STATIC_TABLE = [
   { firstName: 'Larry', lastName: 'theBird', username: '@twitter' }
 ];
 
+// Persist the latest successful donut data so it can be replayed offline.
+async function cacheDashboard(chartDonut) {
+  let existing = null;
+  try {
+    existing = await usersDB.get(CACHE_DOC_ID);
+  } catch (err) {
+    if (err.status !== 404) throw err;
+  }
+
+  const doc = {
+    _id: CACHE_DOC_ID,
+    type: 'dashboard-cache',
+    chartDonut,
+    updatedAt: new Date().toISOString()
+  };
+  if (existing) doc._rev = existing._rev;
+
+  await usersDB.put(doc);
+}
+
+async function readCachedDashboard() {
+  try {
+    const doc = await usersDB.get(CACHE_DOC_ID);
+    return Array.isArray(doc.chartDonut) ? doc.chartDonut : null;
+  } catch (err) {
+    if (err.status === 404) return null;
+    throw err;
+  }
+}
+
+function isNetworkError(err) {
+  return (
+    err instanceof TypeError ||
+    /fetch failed|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|network/i.test(
+      err.message || ''
+    )
+  );
+}
+
+function buildResponse(chartDonut, source) {
+  return {
+    success: true,
+    source,
+    // Live donut data straight from the API (array of { name, value }).
+    chartDonut,
+    // Bar chart and table use the fixed values per the design spec.
+    chartBar: STATIC_BAR,
+    tableUsers: STATIC_TABLE
+  };
+}
+
 async function getDashboard(token) {
-  const res = await fetch(DASHBOARD_ENDPOINT, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {}
-  });
+  let res;
+  try {
+    res = await fetch(DASHBOARD_ENDPOINT, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+  } catch (err) {
+    // Network unreachable — fall back to the cached snapshot if we have one.
+    if (isNetworkError(err)) {
+      const cached = await readCachedDashboard();
+      if (cached) return buildResponse(cached, 'cache');
+    }
+    throw err;
+  }
 
   if (res.status === 401) {
     // Token rejected/expired — signal the renderer to force re-authentication,
@@ -41,19 +109,23 @@ async function getDashboard(token) {
   }
 
   if (!res.ok) {
+    // Server-side failure — serve cached data rather than an error if possible.
+    const cached = await readCachedDashboard();
+    if (cached) return buildResponse(cached, 'cache');
     return { success: false, status: res.status };
   }
 
   const data = await res.json();
+  const chartDonut = Array.isArray(data.chartDonut) ? data.chartDonut : [];
 
-  return {
-    success: true,
-    // Live donut data straight from the API (array of { name, value }).
-    chartDonut: Array.isArray(data.chartDonut) ? data.chartDonut : [],
-    // Bar chart and table use the fixed values per the design spec.
-    chartBar: STATIC_BAR,
-    tableUsers: STATIC_TABLE
-  };
+  // Best-effort cache update; never let a cache write break a live response.
+  try {
+    await cacheDashboard(chartDonut);
+  } catch {
+    /* ignore cache write failures */
+  }
+
+  return buildResponse(chartDonut, 'api');
 }
 
 module.exports = { getDashboard };

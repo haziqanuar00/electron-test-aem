@@ -7,6 +7,7 @@
 const logoutBtn = document.getElementById('logout-btn');
 const loadingEl = document.getElementById('loading');
 const errorEl = document.getElementById('error');
+const offlineBanner = document.getElementById('offline-banner');
 const contentEl = document.getElementById('dashboard-content');
 
 // Gray ordinal scheme, same domain as Angular's colorScheme.
@@ -69,24 +70,34 @@ function renderBar(items) {
   });
 }
 
+// Build a <td> via the DOM so values are inserted as text, never parsed as
+// HTML. Guards against injection if the API data were ever compromised.
+function makeCell(text, className) {
+  const td = document.createElement('td');
+  if (className) td.className = className;
+  td.textContent = text;
+  return td;
+}
+
 function renderTable(rows) {
   const tbody = document.getElementById('user-table-body');
-  tbody.innerHTML = '';
+  tbody.replaceChildren();
 
   if (!rows.length) {
     const tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="4" class="empty">No users found.</td>';
+    const td = makeCell('No users found.', 'empty');
+    td.colSpan = 4;
+    tr.appendChild(td);
     tbody.appendChild(tr);
     return;
   }
 
   rows.forEach((u, i) => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="col-index">${i + 1}</td>
-      <td>${u.firstName}</td>
-      <td>${u.lastName}</td>
-      <td>${u.username}</td>`;
+    tr.appendChild(makeCell(i + 1, 'col-index'));
+    tr.appendChild(makeCell(u.firstName));
+    tr.appendChild(makeCell(u.lastName));
+    tr.appendChild(makeCell(u.username));
     tbody.appendChild(tr);
   });
 }
@@ -120,6 +131,9 @@ async function init() {
 
   loadingEl.hidden = true;
   contentEl.hidden = false;
+  // Let the user know when charts are served from the offline cache rather
+  // than fetched live, so stale numbers aren't mistaken for current ones.
+  offlineBanner.hidden = data.source !== 'cache';
 
   renderDonut(data.chartDonut);
   renderBar(data.chartBar);

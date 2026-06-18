@@ -104,6 +104,16 @@ body {
   font-size: 0.82rem;
 }
 
+.offline-banner {
+  margin: 0 1.5rem 1rem;
+  padding: 0.55rem 0.85rem;
+  background: #fcf8e3;
+  border: 1px solid #faebcc;
+  border-radius: 4px;
+  color: #8a6d3b;
+  font-size: 0.82rem;
+}
+
 .btn-submit {
   width: 100%;
   padding: 0.5rem 1.1rem;
